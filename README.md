@@ -1,1 +1,6 @@
 # Sierpinski-Triangle
+BSV
+f830cad9c888f1715b7af7350aeff24676a5c00295928da631a71fb965fb58e8
+
+View raw:
+https://whatsonchain.com/tx/f830cad9c888f1715b7af7350aeff24676a5c00295928da631a71fb965fb58e8
