@@ -1,0 +1,271 @@
+<style>
+    .container {
+      margin: 0 auto;
+      text-align: center;
+      width: 380px;
+    }
+  
+    input {
+      margin: 5px;
+      padding: 5px;
+    }
+  
+    input#rule {
+      width: 6em;
+    }
+  
+    p {
+      margin: 6px auto;
+      font-size: 0.9em;
+    }
+  
+    a,a:visited{
+      color: #1199cc;
+      text-decoration: none;
+    }
+  
+    canvas {
+      margin: 0 auto;
+      display: block;
+      border: 2px solid #ccc;
+    }
+  </style>
+  </head>
+  
+  <body onload="init();">
+    <div class="container">
+      <input type="text" id="rule" size="3" type="number" placeholder="0-255" value=150 >
+      <input type="button" id="go" value="go">
+      <input type="button" id="stop" value="stop">
+      <p>
+        try: <a href="#28">28</a>, <a href="#30">30</a>, <a href="#54">54</a>,
+        <a href="#60">60</a>, <a href="#62">62</a>, <a href="#73">73</a>,
+        <a href="#90">90</a>, <a href="#94">94</a>, <a href="#110">110</a>,
+        <a href="#150">150</a>, <a href="#158">158</a>, <a href="#165">165</a>,
+        <a href="#188">188</a>, <a href="#190">190</a>, <a href="#220">220</a>,
+        <a href="#222">222</a>
+      </p>
+      <canvas id="canvas" width="380" height="540">
+  
+      </canvas>
+    </div>
+    <button onclick='myfunction()'>get some tx id -> numbers between 0-255</button>
+      <button onclick='myfunction2()'>put into box</button>
+  </body>
+  
+  
+  <script>
+      var array2 = []
+    function myfunction(){
+  var tempstore = 0;
+    var array = []
+    var number = 0;
+    var string2 =''
+  var query = {
+    "v": 3,
+    "q": {
+      "find": {},
+      "limit": 100
+    },
+    "r": {
+      "f": "[ .[] | {msg: .tx.h} ]"
+    }
+  }
+  
+  var b64 = btoa(JSON.stringify(query));
+  var url = "https://genesis.bitdb.network/q/1FnauZ9aUH2Bex6JzdcV4eNX7oLSSEbxtN/" + b64;
+  
+  var header = {
+    headers: { key: [['1L4XX9iXMPVf1x7rYW9L1oDUaTqbDkkJ8']] }
+  };
+  var i =0;
+  fetch(url, header).then(function(r) {
+    return r.json()
+  }).then(function(r) {
+    r.c.forEach(function(output) {
+      i++;
+      var div = document.createElement("div");
+      div.setAttribute('id',i.toString())
+      string2 = output.msg.replace(/a|b|c|d|e|f|0/g,'');
+  array = string2.split('')
+  
+  for (i=0;i<array.length;i++){
+    tempstore+=parseInt(array[i])
+  }
+  div.innerHTML = tempstore;
+  document.getElementById('rule').value= tempstore;
+  array2[array2.length]=tempstore;
+  console.log(array2[array2.length-1])
+  var number = tempstore;
+  tempstore=0;
+  document.body.appendChild(div)
+    })
+  })
+  }
+  
+  function myfunction2(){
+    document.getElementById('rule').value= (array2[Math.floor(Math.random()*array2.length)+1])
+  }
+  //cellular automaton rules below
+  
+  var maxSize = 1000;
+  
+  function cellularAutomatonSeed() {
+    return [false, true, false];
+  }
+  
+  // r: rule array, s: state array
+  // returns array
+  function cellularAutomaton(r, s) {
+    while (s.length > maxSize) {
+      s.shift();
+      s.pop();
+    }
+  
+    s_next = new Array(s.length + 2).fill(false);
+  
+    for (var i = 0, j = -1; i < s_next.length; i++, j++) {
+      var prev = j > 0 ? s[j-1] : false,
+        cur = j >= 0 && j < s.length ? s[j] : false,
+        next = j < s.length - 1 ? s[j+1] : false;
+  
+      s_next[i] = evaluateCell(r, prev, cur, next);
+    }
+    return s_next;
+  }
+  
+  function evaluateCell(r, prev, cur, next) {
+    var idx = 7 - boolArrayToDecimal([prev, cur, next]);
+    return r[idx];
+  }
+  
+  function boolArrayToDecimal(array) {
+    var num = 0;
+    for (var i = 0; i < array.length; i++) {
+      num = (num << 1) | array[i];
+    }
+    return num;
+  }
+  
+  function parseStrAsRule(str) {
+    var num = parseInt(str);
+    var array = [];
+  
+    while (num > 0) {
+      var bit = num % 2;
+      var quot = Math.floor(num / 2);
+      array.unshift(bit == 1);
+      num = quot;
+    }
+  
+    while (array.length > 8) {
+      array.pop();
+    }
+    while (array.length < 8) {
+      array.unshift(false);
+    }
+    return array;
+  }
+  
+  var context;
+  var savedStates = [];
+  var maxStates = 10;
+  var gameLoop;
+  var config;
+  
+  function init() {
+    window.location.hash = "";
+    var canvas = document.getElementById("canvas");
+    if (canvas.getContext) {
+      context = canvas.getContext("2d");
+    }
+    registerHandlers();
+  }
+  
+  function registerHandlers() {
+    document.getElementById("go").addEventListener("click", updateHash);
+    document.getElementById("stop").addEventListener("click", stop);
+    window.onhashchange = play;
+  }
+  
+  function updateHash() {
+    var unparsedRule = document.getElementById("rule").value;
+    window.location.hash = unparsedRule;
+  }
+  
+  function play() {
+    var unparsedRule = window.location.hash.replace("#", "");
+    var num = parseInt(unparsedRule);
+    if (num >= 0 && num <= 255) {
+      document.getElementById("rule").value = unparsedRule;
+      var rule = parseStrAsRule(unparsedRule);
+      startGame(context, rule);
+    }
+  }
+  
+  function stop() {
+    if (gameLoop !== undefined) {
+      clearInterval(gameLoop);
+      gameLoop = undefined;
+    }
+  }
+  
+  function startGame(context, rule) {
+    if (gameLoop !== undefined) {
+      clearInterval(gameLoop);
+      gameLoop = undefined;
+    }
+  
+    config = {
+      dims: [canvas.width, canvas.height],
+      size: [2, 2],
+      padding: [0, 0]
+    };
+    savedStates = [];
+    maxStates = canvas.height / config.size[1];
+  
+    state = cellularAutomatonSeed();
+    savedStates.push(state);
+  
+    gameLoop = setInterval(function() {playLoop(context, rule);}, 10);
+  }
+  
+  function playLoop(context, rule) {
+    drawAll(context, rule);
+    while (savedStates.length > maxStates) {
+      savedStates.shift();
+    }
+  
+    var nextState = cellularAutomaton(rule, savedStates[savedStates.length - 1]);
+    savedStates.push(nextState);
+  }
+  
+  function drawAll(context, rule) {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    for (var i = 0; i < savedStates.length; i++) {
+      drawRow(context, savedStates[i], i);
+    }
+  }
+  
+  function drawRow(context, cells, row) {
+    for (var x = 0; x < cells.length; x++) {
+      if (cells[x] === false) {
+        continue;
+      }
+  
+      var pos = [
+        x * (config.size[0] + config.padding[0]) +
+          (config.dims[0] / 2 - cells.length * (config.size[0] + config.padding[0]) / 2),
+        row * (config.size[1] + config.padding[1])
+      ];
+  
+      context.fillStyle = "rgb(100, 100, 100)";
+      context.fillRect(
+        pos[0],
+        pos[1],
+        config.size[0],
+        config.size[1]);
+    }
+  }
+  
+  </script>
